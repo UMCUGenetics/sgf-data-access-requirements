@@ -29,12 +29,13 @@
   #:use-module (www util)
   #:use-module (logger)
 
-  #:export (all-study-ids
-            all-dataset-ids
-            datasets-by-study-id
-            dataset-ac
+  #:export (%additional-limitation-terms
             add-submission
-            %additional-limitation-terms))
+            all-dataset-ids
+            all-study-ids
+            dataset-ac
+            datasets-by-study-id
+            form-submissions))
 
 (define %metadata-graph "https://udac.ubec.nl")
 
@@ -195,6 +196,26 @@
       (if (eq? key 'success)
           (values #t #f)
           (values #f args)))))
+
+;; ----------------------------------------------------------------------------
+;; REPORTING
+;; ----------------------------------------------------------------------------
+
+(define (form-submissions)
+  (let ((query   (string-append
+                  %prefixes
+                  "SELECT ?id ?title ?primaryDuo ?email ?submissionDate ?registrationDate "
+                  "FROM <" %metadata-graph "> "
+                  "WHERE {"
+                  " ?submission rdf:type sgf:FormSubmission ;"
+                  " sgf:registrationDate ?registrationDate ;"
+                  " sgf:submissionDate   ?submissionDate ;"
+                  " sgf:datasetId        ?id ;"
+                  " sgf:datasetTitle     ?title ;"
+                  " sgf:dataUsageLicense ?primaryDuo ;"
+                  " sgf:emailAddress     ?email ."
+                  "}")))
+    (query-results->alist (system-sparql-query query))))
 
 ;; ----------------------------------------------------------------------------
 ;; AUTOCOMPLETION

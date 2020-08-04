@@ -20,7 +20,8 @@ STATIC_FILES    = static/css/udac.css                      \
                   static/images/ubec-logo.png
 
 SOURCES         = www/db/data-access-requirements.scm      \
-                  www/forms/data-access-requirements.scm
+                  www/forms/data-access-requirements.scm   \
+                  www/reports/data-access-requirements.scm
 
 webdir          = $(pkgdatadir)/web
 nobase_web_DATA = $(STATIC_FILES)
