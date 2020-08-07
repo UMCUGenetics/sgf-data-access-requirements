@@ -152,7 +152,12 @@
                    ,(ul-without-bullets (and (not (string? (assoc-ref data 'data-controller-agreed)))
                                              show-missing?)
                      `(li ,(checkbox "data-controller-agreed"
-                            "I agree that the UMC Utrecht DAC will become the primary data con  troller."
+                            (string-append
+                             "I agree that the UBEC DAC of the UMC Utrecht "
+                             "will become the primary data controller, and "
+                             "that approved data reuse applicants will sign "
+                             "the Data Transfer Agreement (DTA) of the UMC "
+                             "Utrecht.")
                             #:required? #t
                             #:checked? (assoc-ref data 'data-controller-agreed))))
 
@@ -207,7 +212,9 @@
                    (div (@ (id "consent-form-location-id"))
                         (p "The information and consent forms are located at:")
                         ,(textarea "consent-form-location"
-                          #:value (assoc-ref data 'consent-form-location)))
+                          #:value (assoc-ref data 'consent-form-location)
+                          #:required? (not (not (assoc-ref data 'consent-box)))
+                          #:show-missing? show-missing?))
 
                    (h4 "Proceed")
                    ,(proceed-button 2)
@@ -240,6 +247,8 @@
 
                    (h4 "Other limitations for use")
                    (p (@ (style "font-weight: bold;")) "Access type: ")
+                   (p "Please note that sensitive and human related data "
+                      "cannot be shared openly.")
                    (span
                     ,@(if (and show-missing?
                                (not (assoc-ref data 'access-type)))
@@ -251,8 +260,9 @@
                                   (current (assoc-ref data 'access-type)))
                               (radio-button id "access-type" item
                                #:checked? (and current (string= current id)))))
-                          '("Open" "Closed" "Embargoed" "Restricted")))
-                   (p (@ (style "font-weight: bold;")) "Other limitations:")
+                          '("Open" "Restricted" "Embargoed" "Closed")))
+                   (p (@ (style "font-weight: bold; margin-bottom: 0pt;"))
+                      "Explanation of limitations:")
                    ,(textarea "other-use-limitations"
                      #:value (assoc-ref data 'other-use-limitations))
 
@@ -304,7 +314,9 @@
                       "Please add specific communication wishes in the "
                       "case of a data access request of the data-set(s) "
                       "mentioned above.")
-                     #:value (assoc-ref data 'additional-communication))
+                     #:value (assoc-ref data 'additional-communication)
+                     #:required? #t
+                     #:show-missing? show-missing?)
 
                    (h4 "Contact information")
                    (p "At what e-mail address can we reach you to follow-up "
