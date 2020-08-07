@@ -28,9 +28,9 @@ function proceed(section) {
 function toggle_consent_box() {
   var state = document.getElementById("consent-box").checked;
   if (state) {
-    jQuery("#consent-form-location").show();
+    jQuery("#consent-form-location-id").show();
   } else {
-    jQuery("#consent-form-location").hide();
+    jQuery("#consent-form-location-id").hide();
   }
 }
 
@@ -54,7 +54,7 @@ function ac_dataset(studyId) {
 jQuery(document).ready(function(){
   jQuery("#accordion").accordion({ animate: 0 });
     if (! jQuery("#consent-box").is(":checked")) {
-      jQuery("#consent-form-location").hide();
+      jQuery("#consent-form-location-id").hide();
     }
 
   if (jQuery("#dul-radio").is(":checked") &&
