@@ -35,7 +35,8 @@
             all-study-ids
             dataset-ac
             datasets-by-study-id
-            form-submissions))
+            form-submissions
+            form-submission-by-id))
 
 (define %metadata-graph "https://udac.ubec.nl")
 
@@ -136,11 +137,11 @@
             (let* ((registration-date (format #f "~s^^xsd:dateTimeStamp"
                                               (strftime "%Y-%m-%dT%H:%M:%SZ" (gmtime (current-time)))))
                    (escape  (lambda (text) (format #f "~s" text)))
-                   (form-id (random-ascii-string 64))
+                   (submission-id (random-ascii-string 64))
                    (query   (string-append
                              %prefixes
                              "INSERT INTO <" %metadata-graph "> {"
-                             " sgf:" form-id " rdf:type sgf:FormSubmission ;"
+                             " sgf:" submission-id " rdf:type sgf:FormSubmission ;"
                              " sgf:accessType sgf:"                access-type " ;"
                              " sgf:registrationDate "              registration-date " ;"
                              " sgf:submissionDate "                (escape submission-date) " ;"
@@ -201,21 +202,47 @@
 ;; REPORTING
 ;; ----------------------------------------------------------------------------
 
-(define (form-submissions)
+(define* (form-submissions #:key (filters #f))
   (let ((query   (string-append
                   %prefixes
-                  "SELECT ?id ?title ?primaryDuo ?email ?submissionDate ?registrationDate "
-                  "FROM <" %metadata-graph "> "
-                  "WHERE {"
-                  " ?submission rdf:type sgf:FormSubmission ;"
-                  " sgf:registrationDate ?registrationDate ;"
-                  " sgf:submissionDate   ?submissionDate ;"
-                  " sgf:datasetId        ?id ;"
-                  " sgf:datasetTitle     ?title ;"
-                  " sgf:dataUsageLicense ?primaryDuo ;"
-                  " sgf:emailAddress     ?email ."
-                  "}")))
+                  "
+SELECT (STRAFTER(STR(?submission), STR(sgf:)) AS ?submissionId) ?datasetId
+       ?accessType ?registrationDate ?submissionDate ?datasetId ?title
+       ?principalInvestigator ?primaryDuo ?email ?projectWebsite ?communication
+       ?additionalMeasures ?citation ?collaborators ?consentFormLocation
+       ?dataProducer ?administrativeOwners ?minimumProtectionMeasures
+       ?otherUseLimitations ?dacIsPrimaryController
+FROM <" %metadata-graph "> WHERE {
+ ?submission rdf:type sgf:FormSubmission .
+ OPTIONAL { ?submission sgf:accessType                ?accessType . }
+ OPTIONAL { ?submission sgf:registrationDate          ?registrationDate . }
+ OPTIONAL { ?submission sgf:submissionDate            ?submissionDate . }
+ OPTIONAL { ?submission sgf:datasetId                 ?datasetId . }
+ OPTIONAL { ?submission sgf:datasetTitle              ?title . }
+ OPTIONAL { ?submission sgf:principalInvestigator     ?principalInvestigator . }
+ OPTIONAL { ?submission sgf:dataUsageLicense          ?primaryDuo . }
+ OPTIONAL { ?submission sgf:emailAddress              ?email . }
+ OPTIONAL { ?submission sgf:projectWebsite            ?projectWebsite . }
+ OPTIONAL { ?submission sgf:communication             ?communication . }
+ OPTIONAL { ?submission sgf:additionalMeasures        ?additionalMeasures . }
+ OPTIONAL { ?submission sgf:citation                  ?citation . }
+ OPTIONAL { ?submission sgf:collaborators             ?collaborators . }
+ OPTIONAL { ?submission sgf:consentFormLocation       ?consentFormLocation . }
+ OPTIONAL { ?submission sgf:dataProducer              ?dataProducer . }
+ OPTIONAL { ?submission sgf:administrativeOwners      ?administrativeOwners . }
+ OPTIONAL { ?submission sgf:minimumProtectionMeasures ?minimumProtectionMeasures . }
+ OPTIONAL { ?submission sgf:otherUseLimitations       ?otherUseLimitations . }
+ OPTIONAL { ?submission sgf:dacIsPrimaryController    ?dacIsPrimaryController . }
+"
+(if filters
+    (format #f "~{  FILTER (~a)~%~}" filters)
+    "")
+"}")))
     (query-results->alist (system-sparql-query query))))
+
+(define (form-submission-by-id submission-id)
+  (form-submissions #:filters (list (format #f "?submission = sgf:~a"
+                                            submission-id))))
 
 ;; ----------------------------------------------------------------------------
 ;; AUTOCOMPLETION

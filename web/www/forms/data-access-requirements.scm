@@ -76,7 +76,12 @@
 ;; PAGE
 ;; ----------------------------------------------------------------------------
 
-(define* (page request-path #:key (error-message #f) (data '()))
+(define* (page request-path arguments #:key (error-message #f) (data '()))
+
+  (when (and arguments (assoc-ref arguments 'submission-id))
+    (set! data (form-submission-by-id (assoc-ref arguments 'submission-id)))
+    (set! error-message #t))
+
   (let ((show-missing? (not (null? data))))
     (page-template "Data access requirements" request-path
      `((h2 "Data access requirements")
@@ -355,7 +360,7 @@
            (p "Your submission for " ,(assoc-ref post-data 'dataset-id)
               " has been received and we will follow-up to "
               ,(assoc-ref post-data 'email-address) ".")))
-        (page request-path
+        (page request-path #f
               #:error-message (if (list? message)
                                   (list-ref message 0)
                                   message)
@@ -365,7 +370,7 @@
 ;; API-HANDLER
 ;; ----------------------------------------------------------------------------
 
-(define (api request-path input-port output-port
+(define (api request-path arguments input-port output-port
              accept-type content-type content-length)
   "Implements the form's internal API handler to provide auto-completions."
 

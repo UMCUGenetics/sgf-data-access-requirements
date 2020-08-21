@@ -17,6 +17,8 @@ include $(top_srcdir)/build-aux/guile.am
 
 STATIC_FILES    = static/css/udac.css                      \
                   static/js/data-access-requirements.js    \
+                  static/images/icons/pdf.png              \
+                  static/images/icons/pdf.svg              \
                   static/images/ubec-logo.png
 
 SOURCES         = www/db/data-access-requirements.scm      \
