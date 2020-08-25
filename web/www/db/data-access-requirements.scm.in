@@ -214,7 +214,7 @@
   (let ((query   (string-append
                   %prefixes
                   "
-SELECT (STRAFTER(STR(?submission), STR(sgf:)) AS ?submissionId) ?datasetId
+SELECT DISTINCT (STRAFTER(STR(?submission), STR(sgf:)) AS ?submissionId)
        ?accessType ?registrationDate ?submissionDate ?datasetId ?title
        ?principalInvestigator ?primaryDuo ?email ?projectWebsite ?communication
        ?additionalMeasures ?citation ?collaborators ?consentFormLocation
