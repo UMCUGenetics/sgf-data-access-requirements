@@ -19,7 +19,8 @@ STATIC_FILES    = static/css/udac.css                      \
                   static/js/data-access-requirements.js    \
                   static/images/icons/pdf.png              \
                   static/images/icons/pdf.svg              \
-                  static/images/ubec-logo.png
+                  static/images/ubec-logo.png              \
+                  static/images/umcu-logo.png
 
 SOURCES         = www/db/data-access-requirements.scm      \
                   www/forms/data-access-requirements.scm   \
