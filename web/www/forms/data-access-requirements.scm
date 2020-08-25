@@ -179,22 +179,12 @@
                                            #:checked? (is-checked? "DUO_0000004")
                                            #:onchange (js "hide_additional_duo()")))
                        `(li (strong "General research use"))
-                       `(li ,(radio-button "DUO_0000005"  "dul-radio"
-                                           "General research use and clinical care"
-                                           #:checked? (is-checked? "DUO_0000005")
-                                           #:onchange (js "show_additional_duo()")))
-                       `(li ,(radio-button "DUO_0000006"  "dul-radio"
-                                           "Health or medical or biomedical research"
-                                           #:checked? (is-checked? "DUO_0000006")
-                                           #:onchange (js "show_additional_duo()")))
-                       `(li ,(radio-button "DUO_0000007" "dul-radio"
-                                           "Disease-specific research"
-                                           #:checked? (is-checked? "DUO_0000007")
-                                           #:onchange (js "show_additional_duo()")))
-                       `(li ,(radio-button "DUO_0000011"  "dul-radio"
-                                           "Population origins or ancestry research"
-                                           #:checked? (is-checked? "DUO_0000011")
-                                           #:onchange (js "show_additional_duo()")))))
+                       (map (lambda (pair)
+                              `(li ,(radio-button (car pair)  "dul-radio"
+                                                  (cdr pair)
+                                                  #:checked? (is-checked? (car pair))
+                                                  #:onchange (js "show_additional_duo()"))))
+                            (cdr %primary-license-terms))))
 
                    (div (@ (id "additional-limitations"))
                      (h4 "Additional limitations on re-use of data")

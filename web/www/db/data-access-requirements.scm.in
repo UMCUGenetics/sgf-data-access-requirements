@@ -30,6 +30,7 @@
   #:use-module (logger)
 
   #:export (%additional-limitation-terms
+            %primary-license-terms
             add-submission
             all-dataset-ids
             all-study-ids
@@ -55,6 +56,13 @@
                  (rdfs         . "http://www.w3.org/2000/01/rdf-schema#")
                  (sgf          . "sgf://@VERSION@/")
                  (xsd          . "http://www.w3.org/2001/XMLSchema#")))))
+
+(define %primary-license-terms
+  '(("DUO_0000004" . "No restrictions")
+    ("DUO_0000005" . "General research use and clinical care")
+    ("DUO_0000006" . "Health or medical or biomedical research")
+    ("DUO_0000007" . "Disease-specific research")
+    ("DUO_0000011" . "Population origins or ancestry research")))
 
 (define %additional-limitation-terms
   '(("DUO_0000012" . "Research-specific restrictions")
