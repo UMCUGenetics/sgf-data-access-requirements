@@ -47,7 +47,7 @@
       (pdf-report-render-section!    pdf "Submission details")
       (pdf-report-render-subsection! pdf "Dataset reference")
       (pdf-report-render-text-field! pdf "EGA Dataset ID"  (get "datasetId") 1)
-      (pdf-report-render-text-field! pdf "Dataset title"   (get "title") 1)
+      (pdf-report-render-text-field! pdf "Dataset title"   (get "datasetTitle") 1)
       (pdf-report-render-text-field! pdf "Project website" (get "projectWebsite") 1)
       (pdf-report-render-spacer!     pdf 12)
       (pdf-report-render-subsection! pdf "Producers and collaborators")
@@ -57,16 +57,48 @@
       (pdf-report-render-spacer!     pdf 12)
       (pdf-report-render-section!    pdf "Dataset protection details")
       (pdf-report-render-subsection! pdf "Specific limitations on area of research")
-      (pdf-report-render-text-field! pdf "Data usage license" (get "primaryDuo") 1)
-      (pdf-report-render-text-field! pdf "Additional limitations" (get "primaryDuo") 1)
-      (pdf-report-render-spacer!     pdf 12)
+
+      ;; DUO
+      (let* ((primary (basename (get "primaryDuo")))
+             (primary-name (assoc-ref %primary-license-terms primary)))
+        (pdf-report-render-text-field! pdf "Data usage license"
+                                       (cond
+                                        [primary-name primary-name]
+                                        [primary primary]
+                                        [else "Unknown"]) 1))
+
+      (let ((additional-duo-terms (form-additional-duo-terms-by-submission submission-id)))
+        (unless (null? additional-duo-terms)
+          (let* ((duo-term (car additional-duo-terms))
+                 (term (basename duo-term))
+                 (term-name (assoc-ref %additional-limitation-terms term)))
+            (pdf-report-render-text-field! pdf "Additional limitations"
+                                           (cond
+                                            [term-name term-name]
+                                            [term term]
+                                            [else "Unknown"]) 1))
+          (for-each (lambda (duo-term)
+                      (let* ((term (basename duo-term))
+                             (term-name (assoc-ref %additional-limitation-terms term)))
+                        (pdf-report-render-text-field! pdf " "
+                                                       (cond
+                                                        [term-name term-name]
+                                                        [term term]
+                                                        [else "Unknown"]) 1)))
+                    (cdr additional-duo-terms))))
+
+      (pdf-report-new-page! pdf)
       (pdf-report-render-section!    pdf "Dataset Adminstration Details")
       (pdf-report-render-text-field! pdf "Data owner"
-                                     (get "administrativeOwners") 5)
+                                     (get "dataAdministrativeOwners") 5)
       (pdf-report-render-text-field! pdf "Minimum protection measures required"
                                      (get "minimumProtectionMeasures") 5)
       (pdf-report-new-page! pdf)
-      (pdf-report-render-text-field! pdf "Access type" (get "accessType") 1)
+      (let ((access-type (get "accessType")))
+        (pdf-report-render-text-field! pdf "Access type"
+                                       (if (string-prefix? "sgf://0.0.1/access-type-" access-type)
+                                           (string-capitalize (substring access-type 24))
+                                           access-type) 1))
       (pdf-report-write-to-port! port pdf #t)
       (pdf-report-close pdf)
       #t])))
@@ -79,10 +111,13 @@
               (th "Submittter")
               (th (@ (style "white-space: nowrap; text-align: right;")) "View as"))
           ,(map (lambda (entry)
-                  `(tr (td ,(assoc-ref entry "datasetId"))
-                       (td ,(assoc-ref entry "title"))
+                  `(tr (td (a (@ (href ,(string-append
+                                         "/form/data-access-requirements?submission-id="
+                                         (assoc-ref entry "submissionId"))))
+                              ,(assoc-ref entry "datasetId")))
+                       (td ,(assoc-ref entry "datasetTitle"))
                        (td ,(assoc-ref entry "primaryDuo"))
-                       (td ,(assoc-ref entry "email"))
+                       (td ,(assoc-ref entry "emailAddress"))
                        (td (@ (class "button-column right-button-column"))
                            (a (@ (href ,(string-append
                                          "/report/" project
