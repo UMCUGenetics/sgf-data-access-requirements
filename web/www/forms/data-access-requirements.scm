@@ -70,16 +70,39 @@
                 (p "Powered by "
                    (a (@ (href "https://www.sparqling-genomics.org")
                          (target "_blank"))
-                      "SPARQLing-genomics") ".")))))))
+                      "SPARQLing-genomics") " | "
+		   (a (@ (href "http://ubec.nl/terms-and-conditions/")) "Terms and conditions"))))))))
 
 ;; ----------------------------------------------------------------------------
 ;; PAGE
 ;; ----------------------------------------------------------------------------
 
+(define (camel-casing->lisp-style input)
+  (if (string? input)
+      (list->string
+       (flatten
+        (map (lambda (char)
+               (if (char-upper-case? char)
+                   `(#\- ,(char-downcase char))
+                   char))
+             (string->list input))))
+      #f))
+
+(define* (translate-db-to-field-names data #:optional (output '()))
+  (if (null? data)
+      output
+      (let ((item (car data))
+            (rest (cdr data)))
+        (translate-db-to-field-names rest
+         (cons
+          `(,(string->symbol
+              (camel-casing->lisp-style (car item))) . ,(cdr item)) output)))))
+
 (define* (page request-path arguments #:key (error-message #f) (data '()))
 
   (when (and arguments (assoc-ref arguments 'submission-id))
-    (set! data (form-submission-by-id (assoc-ref arguments 'submission-id)))
+    (set! data (translate-db-to-field-names
+                (car (form-submission-by-id (assoc-ref arguments 'submission-id)))))
     (set! error-message #t))
 
   (let ((show-missing? (not (null? data))))
@@ -97,7 +120,26 @@
                 (method "POST")
                 (action ,request-path))
 
+             ,(if (assoc-ref data 'submission-id)
+                  `(input (@ (type "hidden")
+                             (name "submission-id")
+                             (value ,(assoc-ref data 'submission-id))))
+                  '())
+
              (div (@ (id "accordion"))
+
+                  ;; CONSENT
+                  ;; ------------------------------------------------------------
+                  (h3 "Handling of your data")
+                  (div
+                   (h4 "Handling of your data")
+                   (p "By clicking the " (em "process to step 2") " and upon "
+		      "submitting this form, you approve that the UBEC DAC of "
+		      "the UMC Utrecht collects and processes the personal "
+		      "data you enter in this form according to the "
+		      (a (@ (href "http://ubec.nl/terms-and-conditions/"))
+			 "terms and conditions") " of the UBEC.")
+                   ,(proceed-button 1))
 
                   ;; SUBMISSION DETAILS
                   ;; ------------------------------------------------------------
@@ -147,7 +189,7 @@
                                (assoc-ref data 'collaborators)))))
 
                    (h4 "Proceed")
-                   ,(proceed-button 1))
+                   ,(proceed-button 2))
 
                   ;; DATASET PROTECTION DETAILS
                   ;; ------------------------------------------------------------
@@ -201,7 +243,8 @@
                      `(li ,(checkbox "consent-box"
                                      "Consent is available for the individuals participated in   this project."
                                      #:class "form-checkbox"
-                                     #:checked? (not (not (assoc-ref data 'consent-box)))
+                                     #:checked? (or (not (not (assoc-ref data 'consent-box)))
+                                                    (string? (assoc-ref data 'consent-form-location)))
                                      #:onchange (js "toggle_consent_box()"))))
 
                    (div (@ (id "consent-form-location-id"))
@@ -212,8 +255,8 @@
                           #:show-missing? show-missing?))
 
                    (h4 "Proceed")
-                   ,(proceed-button 2)
-                   ,(back-button 0))
+                   ,(proceed-button 3)
+                   ,(back-button 1))
 
                   ;; DATASET PROTECTION DETAILS
                   ;; ------------------------------------------------------------
@@ -262,13 +305,13 @@
                      #:value (assoc-ref data 'other-use-limitations))
 
                    (h4 "Citing and crediting")
-                   ,(textarea "citing"
+                   ,(textarea "citation"
                      #:placeholder
                      (string-append
                       "Please explain how you would your data and "
                       "related publication to be cited and "
                       "credited.")
-                     #:value (assoc-ref data 'citing))
+                     #:value (assoc-ref data 'citation))
 
                    (h4 "File access")
                    (p "Receiver of the Data guarantees the below restrictions on file access:")
@@ -327,11 +370,7 @@
                               (onclick ,(js "submit_form()")))
                            "Submit form"))
 
-                   (div (@ (class "large-action-btn")
-                           (onclick ,(js "proceed(1)")))
-                        (a (@ (href "#")
-                              (onclick ,(js "proceed(1)")))
-                           "Back to step 2")))))
+                   ,(back-button 2))))
        (script (@ (src "/static/js/data-access-requirements.js")) ""))
      #:dependencies '(jquery jquery-ui))))
 
@@ -340,8 +379,6 @@
 ;; ----------------------------------------------------------------------------
 
 (define (submit request-path post-data)
-  (log-debug "data-access-requirements submit" "Received:~%~s" post-data)
-
   (receive (state message)
     (add-submission post-data)
     (if state
