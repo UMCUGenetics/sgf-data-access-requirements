@@ -37,7 +37,8 @@
             dataset-ac
             datasets-by-study-id
             form-submissions
-            form-submission-by-id))
+            form-submission-by-id
+            form-additional-duo-terms-by-submission))
 
 (define %metadata-graph "https://udac.ubec.nl")
 
@@ -98,12 +99,13 @@
             (empty  (lambda (field) (or (not field)
                                         (not (string? field))
                                         (string= field "")))))
-        (let ((access-type                 (get 'access-type))
+        (let ((submission-id               (get 'submission-id))
+              (access-type                 (get 'access-type))
               (additional-communication    (get 'additional-communication))
               (additional-limitations      (checked post-data %additional-limitation-terms))
               (data-controller-agreed      (get 'data-controller-agreed))
               (additional-measures         (get 'additional-measures))
-              (citing                      (get 'citing))
+              (citation                    (get 'citation))
               (collaborators               (get 'collaborators))
               (consent-form-location       (get 'consent-form-location))
               (data-administrative-owners  (get 'data-administrative-owners))
@@ -145,7 +147,9 @@
             (let* ((registration-date (format #f "~s^^xsd:dateTimeStamp"
                                               (strftime "%Y-%m-%dT%H:%M:%SZ" (gmtime (current-time)))))
                    (escape  (lambda (text) (format #f "~s" text)))
-                   (submission-id (random-ascii-string 64))
+                   (submission-id (if submission-id
+                                      submission-id
+                                      (random-ascii-string 64)))
                    (query   (string-append
                              %prefixes
                              "INSERT INTO <" %metadata-graph "> {"
@@ -158,6 +162,12 @@
                              " sgf:principalInvestigator "         (escape principal-investigator) " ;"
                              " sgf:dataUsageLicense duo:"          dul-radio " ;"
                              " sgf:emailAddress "                  (escape email-address) " ;"
+                             (if (not (null? additional-limitations))
+                                 (begin
+                                   (log-debug "add-submission" "Processing additional-limitations")
+                                   (format #f "~{ sgf:additionalDataLimitation duo:~a ;~}"
+                                           additional-limitations))
+                                 "")
                              (if (not (empty project-website))
                                  (format #f " sgf:projectWebsite ~s ;" project-website)
                                  "")
@@ -167,8 +177,8 @@
                              (if (not (empty additional-measures))
                                  (format #f " sgf:additionalMeasures ~s ;" additional-measures)
                                  "")
-                             (if (not (empty citing))
-                                 (format #f " sgf:citation ~s ;" citing)
+                             (if (not (empty citation))
+                                 (format #f " sgf:citation ~s ;" citation)
                                  "")
                              (if (not (empty collaborators))
                                  (format #f " sgf:collaborators ~s ;" collaborators)
@@ -191,7 +201,6 @@
                              " sgf:dacIsPrimaryController \""
                              (if data-controller-agreed "true" "false") "\"^^xsd:boolean ."
                              "}")))
-
               (receive (header body)
                   (system-sparql-query query)
                 (if (= (response-code header) 200)
@@ -215,38 +224,53 @@
                   %prefixes
                   "
 SELECT DISTINCT (STRAFTER(STR(?submission), STR(sgf:)) AS ?submissionId)
-       ?accessType ?registrationDate ?submissionDate ?datasetId ?title
-       ?principalInvestigator ?primaryDuo ?email ?projectWebsite ?communication
-       ?additionalMeasures ?citation ?collaborators ?consentFormLocation
-       ?dataProducer ?administrativeOwners ?minimumProtectionMeasures
-       ?otherUseLimitations ?dacIsPrimaryController
+       ?accessType ?registrationDate ?submissionDate ?datasetId ?datasetTitle
+       ?principalInvestigator ?primaryDuo ?emailAddress ?projectWebsite
+       ?additionalCommunication ?additionalMeasures ?citation ?collaborators
+       ?consentFormLocation ?dataProducer ?dataAdministrativeOwners
+       ?minimumProtectionMeasures ?otherUseLimitations ?dataControllerAgreed
 FROM <" %metadata-graph "> WHERE {
  ?submission rdf:type sgf:FormSubmission .
  OPTIONAL { ?submission sgf:accessType                ?accessType . }
  OPTIONAL { ?submission sgf:registrationDate          ?registrationDate . }
  OPTIONAL { ?submission sgf:submissionDate            ?submissionDate . }
  OPTIONAL { ?submission sgf:datasetId                 ?datasetId . }
- OPTIONAL { ?submission sgf:datasetTitle              ?title . }
+ OPTIONAL { ?submission sgf:datasetTitle              ?datasetTitle . }
  OPTIONAL { ?submission sgf:principalInvestigator     ?principalInvestigator . }
  OPTIONAL { ?submission sgf:dataUsageLicense          ?primaryDuo . }
- OPTIONAL { ?submission sgf:emailAddress              ?email . }
+ OPTIONAL { ?submission sgf:emailAddress              ?emailAddress . }
  OPTIONAL { ?submission sgf:projectWebsite            ?projectWebsite . }
- OPTIONAL { ?submission sgf:communication             ?communication . }
+ OPTIONAL { ?submission sgf:communication             ?additionalCommunication . }
  OPTIONAL { ?submission sgf:additionalMeasures        ?additionalMeasures . }
  OPTIONAL { ?submission sgf:citation                  ?citation . }
  OPTIONAL { ?submission sgf:collaborators             ?collaborators . }
  OPTIONAL { ?submission sgf:consentFormLocation       ?consentFormLocation . }
  OPTIONAL { ?submission sgf:dataProducer              ?dataProducer . }
- OPTIONAL { ?submission sgf:administrativeOwners      ?administrativeOwners . }
+ OPTIONAL { ?submission sgf:administrativeOwners      ?dataAdministrativeOwners . }
  OPTIONAL { ?submission sgf:minimumProtectionMeasures ?minimumProtectionMeasures . }
  OPTIONAL { ?submission sgf:otherUseLimitations       ?otherUseLimitations . }
- OPTIONAL { ?submission sgf:dacIsPrimaryController    ?dacIsPrimaryController . }
+ OPTIONAL { ?submission sgf:dacIsPrimaryController    ?dataControllerAgreed . }
 "
 (if filters
     (format #f "~{  FILTER (~a)~%~}" filters)
     "")
 "}")))
     (query-results->alist (system-sparql-query query))))
+
+(define (form-additional-duo-terms-by-submission submission-id)
+  (let ((query   (string-append
+                  %prefixes
+                  "
+SELECT DISTINCT ?additionalDataLimitation
+FROM <" %metadata-graph ">
+WHERE {
+  sgf:" submission-id " rdf:type sgf:FormSubmission ;
+    sgf:additionalDataLimitation ?additionalDataLimitation .
+}")))
+    (log-debug "form-additional-duo-terms-by-submission" "Query:~%~a~%" query)
+    (flatten
+     (query-results->list
+      (system-sparql-query query) #t))))
 
 (define (form-submission-by-id submission-id)
   (form-submissions #:filters (list (format #f "?submission = sgf:~a"
